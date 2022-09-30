@@ -22,12 +22,11 @@ ActiveRecord::Base.establish_connection(:adapter => "postgresql",
 
 class Post < ActiveRecord::Base
   validates :title, presence: true
-  validates :external_post_id, presence: true
-  validates :external_post_id, uniqueness: true
 end
+
 Post.connection.execute <<-SQL
-  DROP TABLE IF EXISTS post_imports;
-  CREATE  TABLE post_imports
+  DROP TABLE IF EXISTS imports;
+  CREATE  TABLE imports
   (
     name character varying,
     email character varying,
@@ -43,7 +42,7 @@ SQL
 
 caculate_time do
 File.open('ha.csv', 'r') do |file|
-  Post.connection.raw_connection.copy_data %{copy post_imports from stdin with csv delimiter ',' quote '"'} do
+  Post.connection.raw_connection.copy_data %{copy imports from stdin with csv delimiter ',' quote '"'} do
     file.gets
     while line = file.gets do
       Post.connection.raw_connection.put_copy_data line
@@ -52,9 +51,9 @@ File.open('ha.csv', 'r') do |file|
 end
 
 Post.connection.execute <<-SQL
-  insert into post_imports(name, email, phone, address, date_of_birth, profile)
+  insert into imports(name, email, phone, address, date_of_birth, profile)
   select name, email, phone, address, date_of_birth, profile
-  from post_imports
+  from imports
   on conflict(name) do 
   update set
 	name = EXCLUDED.name,
